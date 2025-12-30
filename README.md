@@ -160,6 +160,46 @@ Service 폴더는 각각 독립적인 기능을 담당하는 마이크로서비�
 아래는 주요 프로세스의 데이터 흐름과 인프라 구성요소의 상호작용을 보여주는 다이어그램입니다:
 ![데이터 흐름도](./asset/sequence-diagram-full.svg)
 
+#### 아래는 카프카 데이터 흐름 구조에 대한 다이어그램입니다.
+```mermaid
+sequenceDiagram
+    participant App as Application Service
+    participant Publisher as OutboxEventPublisher
+    participant Spring as Spring Event Bus
+    participant Relay as MessageRelay
+    participant DB as Database (Outbox)
+    participant Kafka as Kafka Cluster
+    
+    Note over App, Spring: 1. 이벤트 생성 및 내부 발행
+    App->>Publisher: 1-1. publish(EventType, Payload)
+    Publisher->>Spring: 1-2. publishEvent(OutboxEvent)
+    
+    Note over Spring, DB: 2. 트랜잭션 내 저장 (Loose Coupling)
+    Spring->>Relay: 2-1. @TransactionalEventListener(BEFORE_COMMIT)
+    Relay->>DB: 2-2. Outbox 저장
+    App->>DB: 2-3. Transaction Commit
+    
+    rect rgb(240, 248, 255)
+        Note over Relay, Kafka: 3. 실시간 발행 시도 (After Commit)
+        Relay->>Relay: 3-1. Transaction Commit 후 트리거
+        Relay->>Kafka: 3-2. Message Publish
+        alt 성공
+            Relay->>DB: 3-3. Outbox 삭제
+        else 실패
+            Note right of Relay: 실패 시 로그 기록 (DB엔 남음)
+        end
+    end
+    
+    rect rgb(255, 240, 245)
+        Note over Relay, Kafka: 4. 스케줄러 보정 (10초 주기)
+        Relay->>DB: 4-1. 미발행 이벤트 조회 (10초 전 데이터)
+        loop 각 이벤트에 대해
+            Relay->>Kafka: 4-2. Message Publish
+            Relay->>DB: 4-3. Outbox 삭제
+        end
+    end
+```
+
 ## 상세 프로세스 설명
 
 ### 게시글 작성 및 전파 프로세스
