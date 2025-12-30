@@ -160,7 +160,7 @@ Service 폴더는 각각 독립적인 기능을 담당하는 마이크로서비�
 아래는 주요 프로세스의 데이터 흐름과 인프라 구성요소의 상호작용을 보여주는 다이어그램입니다:
 ![데이터 흐름도](./asset/sequence-diagram-full.svg)
 
-#### 아래는 카프카 데이터 흐름 구조에 대한 다이어그램입니다.
+#### 아래는 kafka 메세징 처리 구조에 대한 다이어그램입니다.
 ```mermaid
 sequenceDiagram
     participant App as Application Service
